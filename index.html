@@ -727,6 +727,14 @@ textarea{width:100%;height:96px;font:12px/1.4 ui-monospace,Menlo,Consolas,monosp
 .leaflet-popup-content table{border-collapse:collapse}
 .leaflet-popup-content td{padding:2px 8px 2px 0;vertical-align:top}
 .leaflet-popup-content td:first-child{color:#667;font-weight:500}
+select{font:500 13px var(--body);color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:6px 8px;max-width:60%}
+.pair{display:grid;grid-template-columns:26px minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+.pair .n{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font:600 12px var(--body)}
+.pair input[type=text]{min-width:0;width:100%;font:13px var(--body);color:var(--ink);background:transparent;border:1px solid transparent;border-radius:4px;padding:3px 5px}
+.pair input[type=text]:hover,.pair input[type=text]:focus{border-color:var(--line);background:var(--field)}
+.pair .res{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pair button:disabled{opacity:.35;cursor:not-allowed}
+.ghost{pointer-events:none}
 @media (max-width:760px){
   body{flex-direction:column-reverse}
   #panel{width:100%;height:46%;border-right:0;border-top:1px solid var(--line)}
@@ -775,11 +783,17 @@ textarea{width:100%;height:96px;font:12px/1.4 ui-monospace,Menlo,Consolas,monosp
   </section>
 
   <section>
-    <h2>Calage</h2>
-    <p class="note">Le plan est calé sur la limite communale actuelle (écart moyen d'environ 30 à 60 m). Pour l'affiner, déplacez les trois repères numérotés vers les points correspondants du fond de carte.</p>
-    <label><input id="adj" type="checkbox"> Ajuster le calage</label>
-    <div class="btns"><button id="reset" type="button">Réinitialiser</button><button id="copy" type="button">Copier le calage</button></div>
-    <textarea id="calout" readonly hidden aria-label="Calage au format JSON"></textarea>
+    <h2>Points de calage</h2>
+    <p class="note">Un point associe un endroit reconnaissable du plan ancien (carrefour, église, angle de limite) à son emplacement réel. Plus les points sont nombreux et répartis sur toute la commune, plus la superposition est fidèle.</p>
+    <div class="btns"><button id="addpt" type="button" class="primary">Ajouter un point</button></div>
+    <p id="addmsg" class="note" role="status"></p>
+    <label><input id="adj" type="checkbox"> Afficher et déplacer les points</label>
+    <div class="row"><label for="mode">Transformation</label>
+      <select id="mode"><option value="affine">Affine (suit les déformations)</option><option value="similarity">Rigide (rotation et échelle)</option></select></div>
+    <div id="pairs"></div>
+    <p id="rms" class="note"></p>
+    <div class="btns"><button id="reset" type="button">Réinitialiser</button><button id="copy" type="button">Copier</button><button id="exportpts" type="button">Exporter GeoJSON</button></div>
+    <textarea id="calout" readonly hidden aria-label="Points de calage au format JSON"></textarea>
   </section>
 </aside>
 
@@ -859,10 +873,34 @@ function solveAffine(S,D){ // S: 3 points pixels [x,y] ; D: 3 Points en mètres 
   var X=sol(D.map(function(p){return p.x})), Y=sol(D.map(function(p){return p.y}));
   return {a:X[0],b:X[1],e:X[2],c:Y[0],d:Y[1],f:Y[2]};
 }
-var SRC=GEO.controls.map(function(c){return c.px});
-var DEF=GEO.controls.map(function(c){return c.ll});
-var dest=DEF.map(function(v){return v.slice()});
-try{var sv=JSON.parse(localStorage.getItem(KEY)||'null'); if(sv&&sv.length===3)dest=sv}catch(e){}
+var KEY='stleger-calage-v2', clone=function(o){return JSON.parse(JSON.stringify(o))};
+var DEFPAIRS=GEO.controls.map(function(c){return {nom:c.nom,px:c.px.slice(),ll:c.ll.slice()}});
+var pairs=clone(DEFPAIRS), mode='affine', T=null;
+try{var sv=JSON.parse(localStorage.getItem(KEY)||'null'); if(sv&&sv.pairs&&sv.pairs.length>=2){pairs=sv.pairs;mode=sv.mode||'affine'}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({pairs:pairs,mode:mode}))}catch(e){}}
+function mean(a){return a.reduce(function(s,v){return s+v},0)/a.length}
+function fitSim(S,D){ // rigide : rotation + échelle + translation (l'axe y des pixels est inversé)
+  var sx=mean(S.map(function(p){return p[0]})), sy=mean(S.map(function(p){return -p[1]})), dx=mean(D.map(function(p){return p.x})), dy=mean(D.map(function(p){return p.y}));
+  var num1=0,num2=0,den=0;
+  S.forEach(function(p,i){var zx=p[0]-sx, zy=-p[1]-sy, wx=D[i].x-dx, wy=D[i].y-dy; num1+=zx*wx+zy*wy; num2+=zx*wy-zy*wx; den+=zx*zx+zy*zy});
+  var mr=num1/den, mi=num2/den;
+  return {a:mr,b:mi,c:mi,d:-mr,e:dx-(mr*sx-mi*sy),f:dy-(mi*sx+mr*sy)};
+}
+function fitAffine(S,D){ // moindres carrés
+  var n=S.length, sx=mean(S.map(function(p){return p[0]})), sy=mean(S.map(function(p){return p[1]})), dx=mean(D.map(function(p){return p.x})), dy=mean(D.map(function(p){return p.y}));
+  var Sxx=0,Sxy=0,Syy=0,Bx1=0,Bx2=0,By1=0,By2=0;
+  S.forEach(function(p,i){var u=p[0]-sx,v=p[1]-sy,X=D[i].x-dx,Y=D[i].y-dy; Sxx+=u*u;Sxy+=u*v;Syy+=v*v;Bx1+=u*X;Bx2+=v*X;By1+=u*Y;By2+=v*Y});
+  var det=Sxx*Syy-Sxy*Sxy; if(Math.abs(det)<1e-6*(Sxx*Syy+1))return null;
+  var a=(Bx1*Syy-Bx2*Sxy)/det, b=(Sxx*Bx2-Sxy*Bx1)/det, c=(By1*Syy-By2*Sxy)/det, d=(Sxx*By2-Sxy*By1)/det;
+  return {a:a,b:b,c:c,d:d,e:dx-a*sx-b*sy,f:dy-c*sx-d*sy};
+}
+function fit(){
+  var S=pairs.map(function(p){return p.px}), D=pairs.map(function(p){return P(p.ll)});
+  T=(mode==='affine'&&pairs.length>=3)?fitAffine(S,D):null; if(!T)T=fitSim(S,D);
+}
+function apply(px){return L.point(T.a*px[0]+T.b*px[1]+T.e,T.c*px[0]+T.d*px[1]+T.f)}
+function toPx(ll){var q=P([ll.lng,ll.lat]),X=q.x-T.e,Y=q.y-T.f,det=T.a*T.d-T.b*T.c;return [(T.d*X-T.b*Y)/det,(-T.c*X+T.a*Y)/det]}
+fit();
 
 var Plan=L.Layer.extend({
   onAdd:function(m){
@@ -875,8 +913,7 @@ var Plan=L.Layer.extend({
   getEvents:function(){var ev={zoom:this._reset,viewreset:this._reset}; if(this._zoomAnimated)ev.zoomanim=this._anim; return ev},
   setOpacity:function(o){this.options.opacity=o; if(this._img)this._img.style.opacity=o},
   _geom:function(){
-    var M=solveAffine(SRC,dest.map(P)); this._M=M;
-    return [[0,0],[W,0],[0,H]].map(function(p){return UP(L.point(M.a*p[0]+M.b*p[1]+M.e,M.c*p[0]+M.d*p[1]+M.f))});
+    return [[0,0],[W,0],[0,H]].map(function(p){return UP(apply(p))});
   },
   _place:function(tl,tr,bl){
     this._img.style.transform='matrix('+(tr.x-tl.x)/W+','+(tr.y-tl.y)/W+','+(bl.x-tl.x)/H+','+(bl.y-tl.y)/H+','+tl.x+','+tl.y+')';
@@ -958,32 +995,87 @@ wrap.addEventListener('dragover',function(e){e.preventDefault()});
 wrap.addEventListener('drop',function(e){e.preventDefault();dc=0;dz.classList.remove('on');Array.prototype.forEach.call(e.dataTransfer.files,loadFile)});
 if(PARC.features&&PARC.features.length)addGeo('Parcelles des aïeuls',PARC);
 
-/* ---- calage manuel ---- */
-var handles=[];
-function makeHandles(){
-  SRC.forEach(function(_,i){
-    var mk=L.marker([dest[i][1],dest[i][0]],{draggable:true,zIndexOffset:1000,pane:'top',
-      icon:L.divIcon({className:'',html:'<span class="hnd">'+(i+1)+'</span>',iconSize:[30,30],iconAnchor:[15,15]}),title:GEO.controls[i].nom});
-    mk.on('drag',function(e){dest[i]=[e.latlng.lng,e.latlng.lat];plan._reset()});
-    mk.on('dragend',function(){try{localStorage.setItem(KEY,JSON.stringify(dest))}catch(e){}});
-    mk.bindTooltip(GEO.controls[i].nom,{direction:'top',offset:[0,-14],className:'lbl'});
-    handles.push(mk);
+/* ---- points de calage ---- */
+var handles=[], links=[], ghosts=[], adding=null;
+function clearMarks(){handles.concat(links,ghosts).forEach(function(l){map.removeLayer(l)});handles=[];links=[];ghosts=[]}
+function resid(i){var a=UP(apply(pairs[i].px)), q=P(a), r=P(pairs[i].ll); return Math.hypot(q.x-r.x,q.y-r.y)*Math.cos(pairs[i].ll[1]*Math.PI/180)}
+function updateLinks(){
+  pairs.forEach(function(p,i){
+    var g=UP(apply(p.px)); if(ghosts[i])ghosts[i].setLatLng([g[1],g[0]]); if(links[i])links[i].setLatLngs([[g[1],g[0]],[p.ll[1],p.ll[0]]]);
   });
 }
-makeHandles();
-$('adj').onchange=function(e){
-  handles.forEach(function(h,i){
-    if(e.target.checked){h.setLatLng([dest[i][1],dest[i][0]]);h.addTo(map)}else map.removeLayer(h);
+function summary(){
+  var r=pairs.map(function(_,i){return resid(i)}), rms=Math.sqrt(mean(r.map(function(v){return v*v})));
+  $('rms').textContent=pairs.length+' points · écart moyen '+(rms<1?'< 1':Math.round(rms))+' m'+(mode==='affine'&&pairs.length===3?' (3 points : calage exact, aucune vérification possible)':'');
+  document.querySelectorAll('#pairs .res').forEach(function(el,i){el.textContent=r[i]<1?'< 1 m':Math.round(r[i])+' m'});
+}
+function min(){return mode==='affine'?3:2}
+function drawPairs(){
+  var box=$('pairs'); box.innerHTML='';
+  pairs.forEach(function(p,i){
+    var d=document.createElement('div'); d.className='pair';
+    d.innerHTML='<span class="n">'+(i+1)+'</span><input type="text" aria-label="Nom du point '+(i+1)+'" value="'+esc(p.nom)+'"><span class="res"></span><button class="x" type="button" aria-label="Supprimer le point '+(i+1)+'"'+(pairs.length<=min()?' disabled':'')+'>×</button>';
+    d.querySelector('input').oninput=function(e){p.nom=e.target.value;save();if(handles[i])handles[i].setTooltipContent(esc(p.nom))};
+    d.querySelector('button').onclick=function(){if(pairs.length>min()){pairs.splice(i,1);refit();drawPairs();buildMarks();save()}};
+    box.appendChild(d);
   });
+  summary();
+}
+function buildMarks(){
+  clearMarks(); var show=$('adj').checked;
+  pairs.forEach(function(p,i){
+    var mk=L.marker([p.ll[1],p.ll[0]],{draggable:true,zIndexOffset:1000,pane:'top',
+      icon:L.divIcon({className:'',html:'<span class="hnd">'+(i+1)+'</span>',iconSize:[30,30],iconAnchor:[15,15]})});
+    mk.on('drag',function(e){p.ll=[e.latlng.lng,e.latlng.lat];refit();updateLinks();summary()});
+    mk.on('dragend',save);
+    mk.bindTooltip(esc(p.nom),{direction:'top',offset:[0,-16],className:'lbl'});
+    var g=UP(apply(p.px));
+    var gh=L.circleMarker([g[1],g[0]],{radius:5,color:'#b03a48',weight:2,fillColor:'#fff',fillOpacity:1,pane:'top',interactive:false,className:'ghost'});
+    var ln=L.polyline([[g[1],g[0]],[p.ll[1],p.ll[0]]],{color:'#b03a48',weight:2,pane:'top',interactive:false});
+    handles.push(mk);ghosts.push(gh);links.push(ln);
+    if(show){ln.addTo(map);gh.addTo(map);mk.addTo(map)}
+  });
+}
+function refit(){fit();plan._reset();updateLinks();summary()}
+function endAdd(msg){
+  if(adding&&adding.tmp)map.removeLayer(adding.tmp); adding=null; map.getContainer().style.cursor='';
+  $('addmsg').className='note'; $('addmsg').textContent=msg||''; $('addpt').textContent='Ajouter un point';
+}
+$('addpt').onclick=function(){
+  if(adding){endAdd('Ajout annulé.');return}
+  adding={step:1}; $('addpt').textContent='Annuler'; map.getContainer().style.cursor='crosshair';
+  if(!$('plan-on').checked){$('plan-on').checked=true;plan.addTo(map)}
+  $('addmsg').className='note warn'; $('addmsg').textContent='Étape 1 sur 2 : cliquez sur un point reconnaissable du plan ancien.';
 };
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&adding)endAdd('Ajout annulé.')});
+map.on('click',function(e){
+  if(!adding)return;
+  if(adding.step===1){
+    var px=toPx(e.latlng);
+    if(px[0]<0||px[0]>W||px[1]<0||px[1]>H){$('addmsg').textContent='Ce point est en dehors du plan ancien. Cliquez sur le plan.';return}
+    adding.px=[Math.round(px[0]),Math.round(px[1])];
+    adding.tmp=L.circleMarker(e.latlng,{radius:7,color:'#b03a48',weight:3,fillColor:'#fff',fillOpacity:.9,pane:'top',interactive:false}).addTo(map);
+    adding.step=2; $('addmsg').textContent='Étape 2 sur 2 : cliquez à l\'emplacement réel de ce point sur le fond de carte (photographie aérienne, plan IGN…).';
+  }else{
+    pairs.push({nom:'Point '+(pairs.length+1),px:adding.px,ll:[e.latlng.lng,e.latlng.lat]});
+    $('adj').checked=true; endAdd('Point '+pairs.length+' ajouté.'); refit(); drawPairs(); buildMarks(); save();
+  }
+});
+$('adj').onchange=buildMarks;
+$('mode').value=mode;
+$('mode').onchange=function(e){mode=e.target.value;refit();drawPairs();buildMarks();save()};
 $('reset').onclick=function(){
-  dest=DEF.map(function(v){return v.slice()}); try{localStorage.removeItem(KEY)}catch(e){}
-  handles.forEach(function(h,i){h.setLatLng([dest[i][1],dest[i][0]])}); plan._reset();
+  pairs=clone(DEFPAIRS);mode='affine';$('mode').value=mode;try{localStorage.removeItem(KEY)}catch(e){}
+  refit();drawPairs();buildMarks();
 };
 $('copy').onclick=function(){
-  var out=JSON.stringify(SRC.map(function(p,i){return {px:p,lon:+dest[i][0].toFixed(6),lat:+dest[i][1].toFixed(6)}}));
+  var out=JSON.stringify({mode:mode,points:pairs.map(function(p){return {nom:p.nom,px:p.px,lon:+p.ll[0].toFixed(6),lat:+p.ll[1].toFixed(6)}})},null,1);
   var t=$('calout'); t.hidden=false; t.value=out; t.select();
   if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(out).catch(function(){});
+};
+$('exportpts').onclick=function(){
+  var gj={type:'FeatureCollection',name:'points-de-calage',features:pairs.map(function(p,i){return {type:'Feature',properties:{nom:p.nom,px_x:p.px[0],px_y:p.px[1],ecart_m:Math.round(resid(i)*10)/10},geometry:{type:'Point',coordinates:[+p.ll[0].toFixed(6),+p.ll[1].toFixed(6)]}}})};
+  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(gj,null,1)],{type:'application/geo+json'})); a.download='points_de_calage.geojson'; document.body.appendChild(a); a.click(); a.remove();
 };
 
 /* ---- commandes ---- */
@@ -1000,7 +1092,7 @@ map.on('zoomend',z);
 var ring=REP.features.filter(function(f){return f.geometry.type==='Polygon'})[0].geometry.coordinates[0];
 var bounds=L.latLngBounds(ring.map(function(c){return [c[1],c[0]]}));
 setBase('ign'); plan.addTo(map); limite.addTo(map); reperes.addTo(map);
-map.fitBounds(bounds.pad(.03)); z();
+map.fitBounds(bounds.pad(.03)); z(); drawPairs(); buildMarks();
 })();
 </script>
 </body>
