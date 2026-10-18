@@ -743,6 +743,32 @@ select{font:500 13px var(--body);color:var(--ink);background:var(--field);border
 .sug.done b{color:var(--muted)}
 .sug.done button{opacity:.6}
 h3{font:600 12px var(--body);margin:6px 0 0;color:var(--ink)}
+details.sec>summary{font:600 11px/1 var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);cursor:pointer;padding:2px 0 10px;list-style:none}
+details.sec>summary::before{content:"▸ "}details.sec[open]>summary::before{content:"▾ "}
+details.sec>.inner{display:flex;flex-direction:column;gap:8px;min-width:0}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+#pform{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+#pform[hidden]{display:none}
+#pform label.f{display:flex;flex-direction:column;align-items:stretch;gap:3px;font-size:12px;color:var(--muted);cursor:default}
+#pform input[type=text],#pform input[type=number],#pform select,#pform textarea{font:13px var(--body);color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:5px;padding:6px 8px;width:100%;max-width:none;min-width:0}
+#pform textarea{height:58px;font-family:var(--body)}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mut{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:6px;padding:8px 0;border-top:1px solid var(--line)}
+.mut input,.mut select{font:12.5px var(--body);color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:5px;padding:5px 6px;min-width:0;width:100%;max-width:none}
+.mut .wide{grid-column:1 / -1}
+.pitem{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line);cursor:pointer}
+.pitem small{display:block;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pitem b{font-weight:500}
+#drawbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:700;display:none;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 120px);
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;box-shadow:0 2px 10px rgba(0,0,0,.25);font-size:13px}
+#drawbar.on{display:flex}
+.drawing .leaflet-interactive{pointer-events:none!important}
+.lowz .parc-lbl{display:none}
+.parc-lbl{background:transparent;border:0;box-shadow:none;color:#fff;font:600 11px var(--body);text-shadow:0 0 3px #000,0 0 3px #000;padding:0}
+.parc-lbl::before{display:none}
+.popbtn{margin-top:8px;font:500 12px var(--body);padding:5px 9px;border:1px solid #bbb;border-radius:5px;background:#fff;color:#222;cursor:pointer}
+.timeline{margin:6px 0 0;padding-left:16px}
 @media (max-width:760px){
   body{flex-direction:column-reverse}
   #panel{width:100%;height:46%;border-right:0;border-top:1px solid var(--line)}
@@ -781,9 +807,38 @@ h3{font:600 12px var(--body);margin:6px 0 0;color:var(--ink)}
     <div id="layers"></div>
   </section>
 
+  <section id="sec-parc">
+    <h2>Parcelles</h2>
+    <p class="note">Tracez chaque parcelle sur le plan, puis renseignez sa fiche et ses mutations. La couleur suit le propriétaire à l'année choisie.</p>
+    <div class="row"><label for="year">Année</label><output id="yearv">1835</output></div>
+    <input id="year" type="range" min="1820" max="2026" value="1835">
+    <div class="legend"><span><i style="background:#2d6a4d"></i>Germond</span><span><i style="background:#c0791f"></i>Milbeau</span><span><i style="background:#2f7f9a"></i>Les deux</span><span><i style="background:#7a7f86"></i>Autre</span></div>
+    <div class="btns"><button id="newp" type="button" class="primary">Nouvelle parcelle</button><button id="expp" type="button">Exporter</button></div>
+    <p id="pmsg" class="note" role="status"></p>
+    <div id="pform" hidden>
+      <div class="f2">
+        <label class="f">Section<input id="f-section" type="text" maxlength="3" autocomplete="off"></label>
+        <label class="f">Numéro<input id="f-numero" type="text" maxlength="8" autocomplete="off"></label>
+      </div>
+      <label class="f">Lieu-dit<input id="f-lieu" type="text" autocomplete="off"></label>
+      <label class="f">Propriétaire à l'origine (cadastre napoléonien)<input id="f-proprio" type="text" autocomplete="off" placeholder="par exemple Germond Jean-Baptiste"></label>
+      <div class="f2">
+        <label class="f">Nature<input id="f-nature" type="text" list="natures" autocomplete="off"></label>
+        <label class="f">Contenance (ares)<input id="f-cont" type="number" step="0.01" min="0"></label>
+      </div>
+      <datalist id="natures"><option>Terre</option><option>Pré</option><option>Bois</option><option>Vigne</option><option>Jardin</option><option>Maison</option><option>Friche</option></datalist>
+      <label class="f">Notes<textarea id="f-notes"></textarea></label>
+      <h3>Mutations</h3>
+      <div id="muts"></div>
+      <div class="btns"><button id="addmut" type="button">Ajouter une mutation</button></div>
+      <div class="btns"><button id="savep" type="button" class="primary">Enregistrer</button><button id="redraw" type="button">Redessiner</button><button id="delp" type="button">Supprimer</button><button id="cancelp" type="button">Fermer</button></div>
+    </div>
+    <div id="plist"></div>
+  </section>
+
   <section>
-    <h2>Couches des aïeuls</h2>
-    <p class="note">Glissez un fichier GeoJSON sur la carte, ou choisissez-le ici. Les propriétés de chaque entité s'affichent au clic.</p>
+    <h2>Importer un GeoJSON</h2>
+    <p class="note">Glissez un fichier GeoJSON sur la carte, ou choisissez-le ici. Un fichier de parcelles exporté depuis cette carte est reconnu et fusionné avec vos parcelles.</p>
     <div class="btns">
       <label class="btn" for="file">Ajouter un GeoJSON</label>
       <input id="file" type="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden>
@@ -791,8 +846,7 @@ h3{font:600 12px var(--body);margin:6px 0 0;color:var(--ink)}
     <p id="msg" class="note" role="status"></p>
   </section>
 
-  <section>
-    <h2>Points de calage</h2>
+  <details class="sec"><summary>Points de calage</summary><div class="inner">
     <p class="note">Un point associe un endroit reconnaissable du plan ancien (carrefour, église, angle de limite) à son emplacement réel. Plus les points sont nombreux et répartis sur toute la commune, plus la superposition est fidèle.</p>
     <div class="btns"><button id="addpt" type="button" class="primary">Ajouter un point</button></div>
     <p id="addmsg" class="note" role="status"></p>
@@ -808,11 +862,12 @@ h3{font:600 12px var(--body);margin:6px 0 0;color:var(--ink)}
     <p id="rms" class="note"></p>
     <div class="btns"><button id="reset" type="button">Réinitialiser</button><button id="copy" type="button">Copier</button><button id="exportpts" type="button">Exporter GeoJSON</button></div>
     <textarea id="calout" readonly hidden aria-label="Points de calage au format JSON"></textarea>
-  </section>
+  </div></details>
 </aside>
 
 <div id="mapwrap">
   <div id="map"></div>
+  <div id="drawbar"><span id="drawcount">0 point</span><button id="dfin" type="button" class="primary">Terminer</button><button id="dundo" type="button">Retirer le dernier point</button><button id="dcancel" type="button">Annuler</button></div>
   <div id="drop">Déposez le fichier GeoJSON</div>
   <div id="status"><span id="coord">—</span><span id="zoom"></span></div>
 </div>
@@ -1008,6 +1063,8 @@ function loadFile(file){
     try{
       var gj=JSON.parse(r.result);
       if(!gj.type)throw new Error('pas un GeoJSON');
+      var fs0=gj.type==='FeatureCollection'?gj.features:(gj.type==='Feature'?[gj]:[]);
+      if(fs0.length&&fs0.every(function(f){return f.properties&&f.properties.section!==undefined&&f.properties.numero!==undefined&&f.geometry&&f.geometry.type==='Polygon'})){var k0=importParcelFeatures(fs0);$('msg').className='note';$('msg').textContent=k0+' parcelle(s) importée(s) depuis '+file.name+'.';return}
       if(!coordsLookGeographic(gj)){$('msg').className='note warn';$('msg').textContent=file.name+' : les coordonnées ne sont pas en longitude/latitude. Reprojetez en WGS84 (EPSG:4326), par exemple dans QGIS.';return}
       var lyr=addGeo(file.name.replace(/\.(geo)?json$/i,''),gj);
       var b=lyr.getBounds(); if(b.isValid())map.fitBounds(b.pad(.2));
@@ -1022,7 +1079,7 @@ wrap.addEventListener('dragenter',function(e){e.preventDefault();dc++;dz.classLi
 wrap.addEventListener('dragleave',function(){if(--dc<=0){dc=0;dz.classList.remove('on')}});
 wrap.addEventListener('dragover',function(e){e.preventDefault()});
 wrap.addEventListener('drop',function(e){e.preventDefault();dc=0;dz.classList.remove('on');Array.prototype.forEach.call(e.dataTransfer.files,loadFile)});
-if(PARC.features&&PARC.features.length)addGeo('Parcelles des aïeuls',PARC);
+
 
 /* ---- points de calage ---- */
 var handles=[], links=[], ghosts=[], adding=null, dragG=false;
@@ -1159,6 +1216,181 @@ bind('l-admin',admin);bind('l-limite',limite);bind('l-reperes',reperes);bind('l-
 map.on('mousemove',function(e){$('coord').textContent=e.latlng.lat.toFixed(5)+' N, '+e.latlng.lng.toFixed(5)+' E'});
 function z(){$('zoom').textContent='zoom '+map.getZoom().toFixed(1)}
 map.on('zoomend',z);
+
+
+/* ---- parcelles ---- */
+var PKEY='stleger-parcelles-v1', parcels=[], parcLayer=L.featureGroup().addTo(map), drawing=null, editing=null, year=1835;
+var FCOL={germond:'#2d6a4d',milbeau:'#c0791f',mixte:'#2f7f9a',autre:'#7a7f86',inconnu:'#7a7f86'};
+var NATURES=['vente','échange','succession','partage','donation','autre'];
+function saveP(){try{localStorage.setItem(PKEY,JSON.stringify(parcels))}catch(e){}}
+function loadP(){try{parcels=JSON.parse(localStorage.getItem(PKEY)||'[]')}catch(e){parcels=[]}}
+function ownerAt(p,y){
+  var o=p.proprietaire||'';
+  (p.mutations||[]).filter(function(m){return m.annee!==''&&m.annee!=null&&+m.annee<=y}).sort(function(a,b){return a.annee-b.annee}).forEach(function(m){if(m.vers)o=m.vers});
+  return o;
+}
+function famOf(o){var s=(o||'').toLowerCase(),g=/germond/.test(s),m=/milbeau/.test(s);return g&&m?'mixte':g?'germond':m?'milbeau':(o?'autre':'inconnu')}
+function pid(p){return (p.section||'?')+' '+(p.numero||'?')}
+function popupFor(p){
+  var d=document.createElement('div'), o=ownerAt(p,year), ms=(p.mutations||[]).slice().sort(function(a,b){return (a.annee||0)-(b.annee||0)});
+  d.innerHTML='<strong>Parcelle '+esc(pid(p))+'</strong>'+(p.lieu?' · '+esc(p.lieu):'')+'<br>En '+year+' : <b>'+esc(o||'propriétaire inconnu')+'</b>'
+   +'<table>'+(p.nature?'<tr><td>Nature</td><td>'+esc(p.nature)+'</td></tr>':'')+(p.cont!==''&&p.cont!=null?'<tr><td>Contenance</td><td>'+esc(p.cont)+' ares</td></tr>':'')
+   +(p.proprietaire?'<tr><td>À l\'origine</td><td>'+esc(p.proprietaire)+'</td></tr>':'')+(p.notes?'<tr><td>Notes</td><td>'+esc(p.notes)+'</td></tr>':'')+'</table>'
+   +(ms.length?'<ul class="timeline">'+ms.map(function(m){return '<li>'+esc(m.annee||'date inconnue')+' : '+esc(m.nature||'mutation')+(m.de||m.vers?' ('+esc(m.de||'?')+' → '+esc(m.vers||'?')+')':'')+(m.source?' <em>['+esc(m.source)+']</em>':'')+'</li>'}).join('')+'</ul>':'')
+   +'<button class="popbtn" type="button">Modifier</button>';
+  d.querySelector('button').onclick=function(){map.closePopup();openForm(p,false)};
+  return d;
+}
+function renderParcels(){
+  parcLayer.clearLayers();
+  parcels.forEach(function(p){
+    if(!p.coords||p.coords.length<3)return;
+    var c=FCOL[famOf(ownerAt(p,year))];
+    var poly=L.polygon(p.coords.map(function(v){return [v[1],v[0]]}),{color:c,weight:2,fillColor:c,fillOpacity:.45});
+    poly.bindPopup(function(){return popupFor(p)});
+    poly.bindTooltip(esc(pid(p)),{permanent:true,direction:'center',className:'parc-lbl'});
+    p._layer=poly; parcLayer.addLayer(poly);
+  });
+  drawList();
+}
+function drawList(){
+  var box=$('plist'); box.innerHTML='';
+  parcels.slice().sort(function(a,b){return pid(a)<pid(b)?-1:1}).forEach(function(p){
+    var o=ownerAt(p,year), d=document.createElement('div'); d.className='pitem';
+    d.innerHTML='<i class="sw" style="background:'+FCOL[famOf(o)]+'"></i><span><b>'+esc(pid(p))+'</b>'+(p.lieu?' · '+esc(p.lieu):'')+'<small>'+esc(o||'propriétaire inconnu')+'</small></span><button class="x" type="button" aria-label="Modifier la parcelle '+esc(pid(p))+'">Modifier</button>';
+    d.onclick=function(e){if(e.target.tagName==='BUTTON'){openForm(p,false);return} if(p._layer){map.fitBounds(p._layer.getBounds().pad(1.2));p._layer.openPopup()}};
+    box.appendChild(d);
+  });
+}
+$('year').oninput=function(e){year=+e.target.value;$('yearv').textContent=year;renderParcels()};
+function zlab(){map.getContainer().classList.toggle('lowz',map.getZoom()<14.5)}
+map.on('zoomend',zlab);
+
+/* tracé */
+var dr={pts:[],line:null,dots:[],cb:null};
+function startDraw(cb){
+  if(adding)endAdd();
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+  stopDraw(true); dr.cb=cb; dr.pts=[];
+  dr.line=L.polygon([],{color:'#b03a48',weight:2,dashArray:'5 4',fillOpacity:.15,interactive:false,pane:'top'}).addTo(map);
+  map.getContainer().classList.add('drawing'); map.getContainer().style.cursor='crosshair'; map.doubleClickZoom.disable();
+  $('drawbar').classList.add('on'); $('drawcount').textContent='0 point : cliquez les angles de la parcelle';
+  if(!$('plan-on').checked){$('plan-on').checked=true;plan.addTo(map)}
+}
+function stopDraw(silent){
+  if(dr.line){map.removeLayer(dr.line);dr.line=null}
+  dr.dots.forEach(function(d){map.removeLayer(d)}); dr.dots=[]; dr.cb=null;
+  map.getContainer().classList.remove('drawing'); map.getContainer().style.cursor=''; map.doubleClickZoom.enable();
+  $('drawbar').classList.remove('on');
+}
+function refreshDraw(){dr.line.setLatLngs(dr.pts.map(function(v){return [v[1],v[0]]}));$('drawcount').textContent=dr.pts.length+(dr.pts.length>1?' points':' point')+(dr.pts.length<3?' (3 minimum)':'')}
+map.on('click',function(e){
+  if(!dr.line)return;
+  dr.pts.push([+e.latlng.lng.toFixed(6),+e.latlng.lat.toFixed(6)]);
+  dr.dots.push(L.circleMarker(e.latlng,{radius:4,color:'#b03a48',weight:2,fillColor:'#fff',fillOpacity:1,interactive:false,pane:'top'}).addTo(map)); refreshDraw();
+});
+function finishDraw(){
+  if(dr.pts.length<3){$('drawcount').textContent='Il faut au moins 3 points.';return}
+  var pts=dr.pts.slice(), cb=dr.cb; stopDraw(); cb(pts);
+}
+$('dfin').onclick=finishDraw;
+$('dundo').onclick=function(){if(dr.pts.length){dr.pts.pop();map.removeLayer(dr.dots.pop());refreshDraw()}};
+$('dcancel').onclick=function(){stopDraw(); $('pmsg').textContent='Tracé annulé.'; if(editing)$('pform').hidden=false};
+document.addEventListener('keydown',function(e){
+  if(!dr.line)return; var tag=(document.activeElement||{}).tagName;
+  if(e.key==='Enter'&&tag!=='INPUT'&&tag!=='TEXTAREA'){e.preventDefault();finishDraw()}
+  else if(e.key==='Escape'){$('dcancel').click()}
+  else if(e.key==='Backspace'&&tag!=='INPUT'&&tag!=='TEXTAREA'){e.preventDefault();$('dundo').click()}
+});
+$('newp').onclick=function(){
+  $('pform').hidden=true; editing=null;
+  $('pmsg').textContent='Cliquez les angles de la parcelle sur le plan, puis « Terminer » (ou Entrée).';
+  startDraw(function(pts){openForm({section:'',numero:'',lieu:'',proprietaire:'',nature:'',cont:'',notes:'',coords:pts,mutations:[]},true)});
+};
+
+/* fiche */
+function drawMuts(){
+  var box=$('muts'); box.innerHTML='';
+  editing.muts.forEach(function(m,i){
+    var d=document.createElement('div'); d.className='mut';
+    d.innerHTML='<input type="number" min="1700" max="2100" placeholder="Année" aria-label="Année de la mutation" value="'+esc(m.annee)+'">'
+      +'<select aria-label="Nature de la mutation">'+NATURES.map(function(n){return '<option'+(m.nature===n?' selected':'')+'>'+n+'</option>'}).join('')+'</select>'
+      +'<button class="x" type="button" aria-label="Supprimer la mutation">×</button>'
+      +'<input class="wide" type="text" placeholder="Ancien propriétaire" aria-label="Ancien propriétaire" value="'+esc(m.de||'')+'">'
+      +'<input class="wide" type="text" placeholder="Nouveau propriétaire" aria-label="Nouveau propriétaire" value="'+esc(m.vers||'')+'">'
+      +'<input class="wide" type="text" placeholder="Source (folio de matrice, acte, date)" aria-label="Source" value="'+esc(m.source||'')+'">';
+    var f=d.querySelectorAll('input,select');
+    f[0].oninput=function(e){m.annee=e.target.value===''?'':+e.target.value};
+    f[1].onchange=function(e){m.nature=e.target.value};
+    f[2].oninput=function(e){m.de=e.target.value}; f[3].oninput=function(e){m.vers=e.target.value}; f[4].oninput=function(e){m.source=e.target.value};
+    d.querySelector('button').onclick=function(){editing.muts.splice(i,1);drawMuts()};
+    box.appendChild(d);
+  });
+}
+function openForm(p,isNew){
+  editing={p:p,isNew:isNew,muts:JSON.parse(JSON.stringify(p.mutations||[]))};
+  $('f-section').value=p.section||'';$('f-numero').value=p.numero||'';$('f-lieu').value=p.lieu||'';$('f-proprio').value=p.proprietaire||'';
+  $('f-nature').value=p.nature||'';$('f-cont').value=(p.cont===''||p.cont==null)?'':p.cont;$('f-notes').value=p.notes||'';
+  $('delp').hidden=isNew; drawMuts(); $('pform').hidden=false; $('pmsg').textContent=isNew?'Contour tracé. Renseignez la fiche.':'Modification de la parcelle '+pid(p)+'.';
+  $('pform').scrollIntoView({block:'nearest'}); $('f-section').focus();
+}
+function readForm(){
+  var p=editing.p;
+  p.section=$('f-section').value.trim().toUpperCase(); p.numero=$('f-numero').value.trim(); p.lieu=$('f-lieu').value.trim(); p.proprietaire=$('f-proprio').value.trim();
+  p.nature=$('f-nature').value.trim(); p.cont=$('f-cont').value===''?'':+$('f-cont').value; p.notes=$('f-notes').value.trim();
+  p.mutations=editing.muts.filter(function(m){return m.annee!==''||m.de||m.vers||m.source});
+}
+$('addmut').onclick=function(){editing.muts.push({annee:'',nature:'vente',de:ownerAt({proprietaire:$('f-proprio').value,mutations:editing.muts},9999),vers:'',source:''});drawMuts()};
+$('savep').onclick=function(){
+  if(!$('f-section').value.trim()||!$('f-numero').value.trim()){$('pmsg').className='note warn';$('pmsg').textContent='Indiquez la section et le numéro.';return}
+  $('pmsg').className='note'; readForm();
+  var p=editing.p;
+  if(editing.isNew){
+    var dup=parcels.filter(function(q){return q.section===p.section&&q.numero===p.numero})[0];
+    if(dup){parcels.splice(parcels.indexOf(dup),1)}
+    parcels.push(p);
+  }
+  saveP(); renderParcels(); $('pform').hidden=true; $('pmsg').textContent='Parcelle '+pid(p)+' enregistrée. Exportez régulièrement vos parcelles.'; editing=null;
+};
+$('cancelp').onclick=function(){$('pform').hidden=true;editing=null;$('pmsg').textContent=''};
+$('delp').onclick=function(){
+  if(!editing||editing.isNew)return;
+  if($('delp').dataset.sure!=='1'){$('delp').dataset.sure='1';$('delp').textContent='Confirmer la suppression';setTimeout(function(){$('delp').dataset.sure='';$('delp').textContent='Supprimer'},4000);return}
+  $('delp').dataset.sure='';$('delp').textContent='Supprimer';
+  parcels.splice(parcels.indexOf(editing.p),1); saveP(); renderParcels(); $('pform').hidden=true; $('pmsg').textContent='Parcelle supprimée.'; editing=null;
+};
+$('redraw').onclick=function(){
+  readForm(); var keep=editing; $('pform').hidden=true;
+  $('pmsg').textContent='Cliquez les nouveaux angles, puis « Terminer ».';
+  startDraw(function(pts){keep.p.coords=pts;editing=keep;$('pform').hidden=false;$('pmsg').textContent='Nouveau contour tracé : enregistrez.';
+    if(!keep.isNew){} });
+};
+
+/* export / import */
+function toFeatures(){
+  return parcels.filter(function(p){return p.coords&&p.coords.length>=3}).map(function(p){
+    var ring=p.coords.concat([p.coords[0]]);
+    return {type:'Feature',properties:{section:p.section,numero:p.numero,lieu_dit:p.lieu,proprietaire_origine:p.proprietaire,nature:p.nature,contenance_ares:p.cont,notes:p.notes,mutations:p.mutations||[]},geometry:{type:'Polygon',coordinates:[ring]}};
+  });
+}
+function importParcelFeatures(fs){
+  var n=0;
+  fs.forEach(function(f){
+    var pr=f.properties||{}; if(!f.geometry||f.geometry.type!=='Polygon')return;
+    var ring=f.geometry.coordinates[0].slice(0,-1);
+    var p={section:String(pr.section||'').toUpperCase(),numero:String(pr.numero||''),lieu:pr.lieu_dit||'',proprietaire:pr.proprietaire_origine||'',nature:pr.nature||'',cont:pr.contenance_ares==null?'':pr.contenance_ares,notes:pr.notes||'',coords:ring,mutations:pr.mutations||[]};
+    var dup=parcels.filter(function(q){return q.section===p.section&&q.numero===p.numero})[0]; if(dup)parcels.splice(parcels.indexOf(dup),1);
+    parcels.push(p); n++;
+  });
+  saveP(); renderParcels(); return n;
+}
+$('expp').onclick=function(){
+  var gj={type:'FeatureCollection',name:'parcelles-germond-milbeau',features:toFeatures()};
+  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(gj,null,1)],{type:'application/geo+json'})); a.download='parcelles_saint-leger.geojson'; document.body.appendChild(a); a.click(); a.remove();
+  $('pmsg').textContent=gj.features.length+' parcelle(s) exportée(s).';
+};
+loadP(); if(!parcels.length&&PARC.features&&PARC.features.length)importParcelFeatures(PARC.features);
+renderParcels(); zlab();
 
 /* ---- démarrage ---- */
 var ring=REP.features.filter(function(f){return f.geometry.type==='Polygon'})[0].geometry.coordinates[0];
