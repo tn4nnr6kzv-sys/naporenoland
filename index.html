@@ -735,6 +735,12 @@ select{font:500 13px var(--body);color:var(--ink);background:var(--field);border
 .pair .res{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .pair button:disabled{opacity:.35;cursor:not-allowed}
 .ghost{pointer-events:none}
+.sug{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
+.sug b{font-weight:500}.sug small{grid-column:1;color:var(--muted);font-size:12px;line-height:1.35}
+.sug button{grid-row:1 / span 2;grid-column:2}
+.sug.done b{color:var(--muted)}
+.sug.done button{opacity:.6}
+h3{font:600 12px var(--body);margin:6px 0 0;color:var(--ink)}
 @media (max-width:760px){
   body{flex-direction:column-reverse}
   #panel{width:100%;height:46%;border-right:0;border-top:1px solid var(--line)}
@@ -769,6 +775,7 @@ select{font:500 13px var(--body);color:var(--ink);background:var(--field);border
     <label><input id="l-limite" type="checkbox" checked> Limite communale tracée</label>
     <label><input id="l-reperes" type="checkbox" checked> Sections, bourg et lieux-dits</label>
     <label><input id="l-cadastre" type="checkbox"> Cadastre actuel (IGN)</label>
+    <label><input id="l-admin" type="checkbox"> Limites de communes actuelles (IGN)</label>
     <div id="layers"></div>
   </section>
 
@@ -787,6 +794,9 @@ select{font:500 13px var(--body);color:var(--ink);background:var(--field);border
     <p class="note">Un point associe un endroit reconnaissable du plan ancien (carrefour, église, angle de limite) à son emplacement réel. Plus les points sont nombreux et répartis sur toute la commune, plus la superposition est fidèle.</p>
     <div class="btns"><button id="addpt" type="button" class="primary">Ajouter un point</button></div>
     <p id="addmsg" class="note" role="status"></p>
+    <h3>Points suggérés</h3>
+    <p class="note">Repères déjà localisés sur le plan. Cliquez sur « Placer », la carte se centre à l'endroit prévu, puis cliquez l'emplacement réel. Les angles de la limite communale se repèrent bien avec la couche « Limites de communes actuelles » et la photographie aérienne.</p>
+    <div id="sugg"></div>
     <label><input id="adj" type="checkbox"> Afficher et déplacer les points</label>
     <div class="row"><label for="mode">Transformation</label>
       <select id="mode"><option value="affine">Affine (suit les déformations)</option><option value="similarity">Rigide (rotation et échelle)</option></select></div>
@@ -804,7 +814,7 @@ select{font:500 13px var(--body);color:var(--ink);background:var(--field);border
 </div>
 
 <script type="application/json" id="georef">{"corners": {"tl": [1.6819571217577376, 48.71433643152862], "tr": [1.7693313774466488, 48.78960986353008], "bl": [1.7532532892397366, 48.67785286110573]}, "size": [2576, 1620], "rotation_deg": 52.37848850613082, "m_per_px": 4.079345767272755, "crs": "EPSG:4326", "controls": [{"nom": "Nord (sommet de la section C)", "px": [800, 56], "ll": [1.711557, 48.736452]}, {"nom": "Est (pointe orientale de la section A)", "px": [2364, 516], "ll": [1.78485, 48.771794]}, {"nom": "Sud (pointe méridionale, vers Poigny)", "px": [988, 1582], "ll": [1.785092, 48.707579]}]}</script>
-<script type="application/json" id="reperes">{"type": "FeatureCollection", "name": "saint-leger-tableau-assemblage", "features": [{"type": "Feature", "properties": {"nom": "Limite communale (tracé sur le tableau d'assemblage)", "type": "limite"}, "geometry": {"type": "Polygon", "coordinates": [[[1.7115565426488484, 48.73645211330604], [1.7173613830197585, 48.74000256335783], [1.7240464229892116, 48.74310259895994], [1.7301046676651948, 48.743728708274865], [1.7388786370324345, 48.743430909103644], [1.7487346340463807, 48.74164785997718], [1.7578113454858655, 48.73979780754759], [1.7637983861729098, 48.737945151112214], [1.764346133664065, 48.742043173424], [1.7652476444115879, 48.747171191778264], [1.7667652948780912, 48.75198392001777], [1.768772382911038, 48.757943528510935], [1.7674218184052934, 48.76608708822066], [1.784849788655038, 48.77179430753605], [1.78397406603597, 48.76572153656614], [1.793920321499508, 48.76063185328492], [1.8064914881319238, 48.76239665020445], [1.8139799183873428, 48.7634087746717], [1.8195655414677976, 48.760364196537694], [1.8209850714727436, 48.75796099528806], [1.819518442190363, 48.7557305163494], [1.8129107666062743, 48.74979622290035], [1.8057749712630595, 48.7441321781211], [1.7978469962811559, 48.73887350634654], [1.794224155518738, 48.73551066554351], [1.7941916337224812, 48.73161477086975], [1.7927362150873776, 48.72770175380092], [1.7913688164121282, 48.72374369528713], [1.7903624697338354, 48.72118452557309], [1.7859934202659997, 48.71717882160855], [1.783884863136184, 48.71620838540031], [1.783008585444329, 48.71460736896253], [1.782526436618474, 48.713829381466134], [1.7809846814404666, 48.71117156766463], [1.7857781248822326, 48.708532362535315], [1.7850924645912638, 48.70757904872214], [1.780000756056728, 48.70524732169024], [1.774687036669212, 48.704053913714475], [1.767422300683723, 48.70311363201344], [1.7595688965246594, 48.70275404963388], [1.7509821777244055, 48.701279227784994], [1.7404556529734554, 48.69837499408067], [1.7305873169680686, 48.69615866498282], [1.727055862999406, 48.69517110637952], [1.7230602045199674, 48.69656366943904], [1.7158167796834585, 48.70120182054194], [1.7128992269440384, 48.703160564533654], [1.7090224268037604, 48.70719381899962], [1.7064513485801192, 48.70981366627656], [1.7098633891368342, 48.712632288005565], [1.712889144640925, 48.71052501901832], [1.7159715266527766, 48.71015873026684], [1.7133045846559052, 48.716926480763625], [1.7095152494026944, 48.72538644831676], [1.7106701644552904, 48.727590125934164], [1.7115565426488484, 48.73645211330604]]]}}, {"type": "Feature", "properties": {"nom": "A", "type": "section", "description": "Section A — du Parc en haut", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.785423, 48.745697]}}, {"type": "Feature", "properties": {"nom": "B", "type": "section", "description": "Section B — du Village", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.767367, 48.717208]}}, {"type": "Feature", "properties": {"nom": "C", "type": "section", "description": "Section C — du Parc en bas", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.732288, 48.730501]}}, {"type": "Feature", "properties": {"nom": "D", "type": "section", "description": "Section D — des grands et petits C…", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.725855, 48.708641]}}, {"type": "Feature", "properties": {"nom": "Saint-Léger", "type": "bourg", "description": "Bourg de Saint-Léger (bâti en carmin sur le plan)", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.768267, 48.725598]}}, {"type": "Feature", "properties": {"nom": "La Longue Mare", "type": "lieu-dit", "description": "Lieu-dit lu sur le plan", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.772366, 48.759831]}}, {"type": "Feature", "properties": {"nom": "La Longue Mare (2)", "type": "lieu-dit", "description": "Lieu-dit lu sur le plan", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.771105, 48.74436]}}, {"type": "Feature", "properties": {"nom": "Bois de Hollande", "type": "lieu-dit", "description": "Lieu-dit lu sur le plan", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.789983, 48.731253]}}, {"type": "Feature", "properties": {"nom": "La Mare Rouée", "type": "lieu-dit", "description": "Lieu-dit lu sur le plan", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.791321, 48.742679]}}]}</script>
+<script type="application/json" id="reperes">{"type": "FeatureCollection", "name": "saint-leger-tableau-assemblage", "features": [{"type": "Feature", "properties": {"nom": "Limite communale (tracé sur le tableau d'assemblage)", "type": "limite"}, "geometry": {"type": "Polygon", "coordinates": [[[1.7115565426488484, 48.73645211330604], [1.7173613830197585, 48.74000256335783], [1.7240464229892116, 48.74310259895994], [1.7301046676651948, 48.743728708274865], [1.7388786370324345, 48.743430909103644], [1.7487346340463807, 48.74164785997718], [1.7578113454858655, 48.73979780754759], [1.7637983861729098, 48.737945151112214], [1.764346133664065, 48.742043173424], [1.7652476444115879, 48.747171191778264], [1.7667652948780912, 48.75198392001777], [1.768772382911038, 48.757943528510935], [1.7674218184052934, 48.76608708822066], [1.784849788655038, 48.77179430753605], [1.78397406603597, 48.76572153656614], [1.793920321499508, 48.76063185328492], [1.8064914881319238, 48.76239665020445], [1.8139799183873428, 48.7634087746717], [1.8195655414677976, 48.760364196537694], [1.8209850714727436, 48.75796099528806], [1.819518442190363, 48.7557305163494], [1.8129107666062743, 48.74979622290035], [1.8057749712630595, 48.7441321781211], [1.7978469962811559, 48.73887350634654], [1.794224155518738, 48.73551066554351], [1.7941916337224812, 48.73161477086975], [1.7927362150873776, 48.72770175380092], [1.7913688164121282, 48.72374369528713], [1.7903624697338354, 48.72118452557309], [1.7859934202659997, 48.71717882160855], [1.783884863136184, 48.71620838540031], [1.783008585444329, 48.71460736896253], [1.782526436618474, 48.713829381466134], [1.7809846814404666, 48.71117156766463], [1.7857781248822326, 48.708532362535315], [1.7850924645912638, 48.70757904872214], [1.780000756056728, 48.70524732169024], [1.774687036669212, 48.704053913714475], [1.767422300683723, 48.70311363201344], [1.7595688965246594, 48.70275404963388], [1.7509821777244055, 48.701279227784994], [1.7404556529734554, 48.69837499408067], [1.7305873169680686, 48.69615866498282], [1.727055862999406, 48.69517110637952], [1.7230602045199674, 48.69656366943904], [1.7158167796834585, 48.70120182054194], [1.7128992269440384, 48.703160564533654], [1.7090224268037604, 48.70719381899962], [1.7064513485801192, 48.70981366627656], [1.7098633891368342, 48.712632288005565], [1.712889144640925, 48.71052501901832], [1.7159715266527766, 48.71015873026684], [1.7133045846559052, 48.716926480763625], [1.7095152494026944, 48.72538644831676], [1.7106701644552904, 48.727590125934164], [1.7115565426488484, 48.73645211330604]]]}}, {"type": "Feature", "properties": {"nom": "A", "type": "section", "description": "Section A — du Parc en haut", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.785423, 48.745697]}}, {"type": "Feature", "properties": {"nom": "B", "type": "section", "description": "Section B — du Village", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.767367, 48.717208]}}, {"type": "Feature", "properties": {"nom": "C", "type": "section", "description": "Section C — du Parc en bas", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.732288, 48.730501]}}, {"type": "Feature", "properties": {"nom": "D", "type": "section", "description": "Section D — des grands et petits C…", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.725855, 48.708641]}}, {"type": "Feature", "properties": {"nom": "Saint-Léger", "type": "bourg", "description": "Bourg de Saint-Léger (bâti en carmin sur le plan)", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.766835, 48.724002]}}, {"type": "Feature", "properties": {"nom": "La Longue Mare", "type": "lieu-dit", "description": "Lieu-dit lu sur le plan", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.772366, 48.759831]}}, {"type": "Feature", "properties": {"nom": "La Longue Mare (2)", "type": "lieu-dit", "description": "Lieu-dit lu sur le plan", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.771105, 48.74436]}}, {"type": "Feature", "properties": {"nom": "Bois de Hollande", "type": "lieu-dit", "description": "Lieu-dit lu sur le plan", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.789983, 48.731253]}}, {"type": "Feature", "properties": {"nom": "La Mare Rouée", "type": "lieu-dit", "description": "Lieu-dit lu sur le plan", "position": "approximative"}, "geometry": {"type": "Point", "coordinates": [1.791321, 48.742679]}}]}</script>
 <!-- Collez ici une FeatureCollection GeoJSON (WGS84) pour intégrer vos parcelles dans le fichier. -->
 <script type="application/json" id="parcelles">{"type":"FeatureCollection","features":[]}</script>
 <script>
@@ -844,6 +854,7 @@ var BASES=[
   {id:'osm',name:'OpenStreetMap',layer:L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'})}
 ];
 var cadastre=ign('CADASTRALPARCELS.PARCELLAIRE_EXPRESS','image/png','© IGN, cadastre',{opacity:.9});
+var admin=ign('LIMITES_ADMINISTRATIVES_EXPRESS.LATEST','image/png','© IGN, limites administratives',{opacity:.9});
 var curBase=null, errs=0;
 BASES.forEach(function(b){
   b.layer.on('tileload',function(){errs=0;$('tilewarn').hidden=true});
@@ -1016,7 +1027,7 @@ function drawPairs(){
     var d=document.createElement('div'); d.className='pair';
     d.innerHTML='<span class="n">'+(i+1)+'</span><input type="text" aria-label="Nom du point '+(i+1)+'" value="'+esc(p.nom)+'"><span class="res"></span><button class="x" type="button" aria-label="Supprimer le point '+(i+1)+'"'+(pairs.length<=min()?' disabled':'')+'>×</button>';
     d.querySelector('input').oninput=function(e){p.nom=e.target.value;save();if(handles[i])handles[i].setTooltipContent(esc(p.nom))};
-    d.querySelector('button').onclick=function(){if(pairs.length>min()){pairs.splice(i,1);refit();drawPairs();buildMarks();save()}};
+    d.querySelector('button').onclick=function(){if(pairs.length>min()){pairs.splice(i,1);refit();drawPairs();drawSugg();buildMarks();save()}};
     box.appendChild(d);
   });
   summary();
@@ -1041,6 +1052,41 @@ function endAdd(msg){
   if(adding&&adding.tmp)map.removeLayer(adding.tmp); adding=null; map.getContainer().style.cursor='';
   $('addmsg').className='note'; $('addmsg').textContent=msg||''; $('addpt').textContent='Ajouter un point';
 }
+
+var SUGG=[
+ {nom:'Centre du bourg',px:[1140,1050],hint:'Nœud où convergent les routes, au milieu du bâti en carmin, juste à gauche du texte « St Léger ».'},
+ {nom:'Carrefour ouest du bourg',px:[1074,1061],hint:'Croisement de deux chemins au cœur du second amas de maisons, à l\'ouest du centre.'},
+ {nom:'Hameau sud-ouest, bifurcation',px:[967,1098],hint:'Embranchement de la route à l\'extrémité ouest du bâti, vers la section B.'},
+ {nom:'Angle intérieur entre sections C et A',px:[1406,776],hint:'Angle rentrant de la limite communale, côté Gambaiseuil.'},
+ {nom:'Décrochement nord-ouest',px:[284,554],hint:'Angle rentrant de la limite communale côté Condé, sous l\'encoche de la section D.'},
+ {nom:'Angle nord de l\'encoche de la section D',px:[172,424],hint:'Coin haut de l\'encoche rectangulaire, limite avec Condé.'},
+ {nom:'Angle ouest de la commune',px:[84,960],hint:'Pointe la plus à l\'ouest de la limite communale (section D).'},
+ {nom:'Redan sud, côté Poigny',px:[1020,1464],hint:'Ressaut de la limite communale juste avant l\'angle sud.'},
+ {nom:'Angle de la limite sud, côté Bréviaires',px:[1688,1250],hint:'Changement de direction de la limite sud, à l\'est de « Bois de Hollande ».'},
+ {nom:'Angle est du lobe oriental (bas)',px:[2224,830],hint:'Angle rentrant de la limite, côté Montfort-l\'Amaury.'},
+ {nom:'Angle sud-est',px:[2504,1070],hint:'Extrémité sud-est de la limite, sur le bord déchiré de la feuille (moins fiable).'}
+];
+function drawSugg(){
+  var box=$('sugg'); box.innerHTML='';
+  SUGG.forEach(function(s){
+    var done=pairs.some(function(p){return p.nom===s.nom});
+    var d=document.createElement('div'); d.className='sug'+(done?' done':'');
+    d.innerHTML='<b>'+esc(s.nom)+(done?' ✓':'')+'</b><button type="button">'+(done?'Replacer':'Placer')+'</button><small>'+esc(s.hint)+'</small>';
+    d.querySelector('button').onclick=function(){startSugg(s)};
+    box.appendChild(d);
+  });
+}
+function startSugg(s){
+  if(adding)endAdd();
+  if(!$('plan-on').checked){$('plan-on').checked=true;plan.addTo(map)}
+  var g=UP(apply(s.px));
+  adding={step:2,px:s.px.slice(),nom:s.nom};
+  adding.tmp=L.circleMarker([g[1],g[0]],{radius:9,color:'#b03a48',weight:3,fillColor:'#fff',fillOpacity:.5,pane:'top',interactive:false}).addTo(map);
+  adding.tmp.bindTooltip(esc(s.nom),{permanent:true,direction:'top',offset:[0,-10],className:'lbl'});
+  map.setView([g[1],g[0]],Math.max(map.getZoom(),14.5));
+  $('addpt').textContent='Annuler'; map.getContainer().style.cursor='crosshair';
+  $('addmsg').className='note warn'; $('addmsg').textContent='Cliquez l\'emplacement réel de : '+s.nom+'. '+s.hint;
+}
 $('addpt').onclick=function(){
   if(adding){endAdd('Ajout annulé.');return}
   adding={step:1}; $('addpt').textContent='Annuler'; map.getContainer().style.cursor='crosshair';
@@ -1057,8 +1103,8 @@ map.on('click',function(e){
     adding.tmp=L.circleMarker(e.latlng,{radius:7,color:'#b03a48',weight:3,fillColor:'#fff',fillOpacity:.9,pane:'top',interactive:false}).addTo(map);
     adding.step=2; $('addmsg').textContent='Étape 2 sur 2 : cliquez à l\'emplacement réel de ce point sur le fond de carte (photographie aérienne, plan IGN…).';
   }else{
-    pairs.push({nom:'Point '+(pairs.length+1),px:adding.px,ll:[e.latlng.lng,e.latlng.lat]});
-    $('adj').checked=true; endAdd('Point '+pairs.length+' ajouté.'); refit(); drawPairs(); buildMarks(); save();
+    var nm=adding.nom||('Point '+(pairs.length+1)); pairs=pairs.filter(function(p){return !adding.nom||p.nom!==adding.nom}); pairs.push({nom:nm,px:adding.px,ll:[e.latlng.lng,e.latlng.lat]});
+    $('adj').checked=true; endAdd(nm+' : ajouté.'); refit(); drawPairs(); drawSugg(); buildMarks(); save();
   }
 });
 $('adj').onchange=buildMarks;
@@ -1066,7 +1112,7 @@ $('mode').value=mode;
 $('mode').onchange=function(e){mode=e.target.value;refit();drawPairs();buildMarks();save()};
 $('reset').onclick=function(){
   pairs=clone(DEFPAIRS);mode='affine';$('mode').value=mode;try{localStorage.removeItem(KEY)}catch(e){}
-  refit();drawPairs();buildMarks();
+  refit();drawPairs();drawSugg();buildMarks();
 };
 $('copy').onclick=function(){
   var out=JSON.stringify({mode:mode,points:pairs.map(function(p){return {nom:p.nom,px:p.px,lon:+p.ll[0].toFixed(6),lat:+p.ll[1].toFixed(6)}})},null,1);
@@ -1083,7 +1129,7 @@ $('op').oninput=function(e){var v=+e.target.value;plan.setOpacity(v/100);$('opv'
 $('plan-on').onchange=function(e){e.target.checked?plan.addTo(map):map.removeLayer(plan)};
 $('mult').onchange=function(e){plan._img.style.mixBlendMode=e.target.checked?'multiply':'normal'};
 function bind(id,layer){$(id).onchange=function(e){e.target.checked?layer.addTo(map):map.removeLayer(layer)}}
-bind('l-limite',limite);bind('l-reperes',reperes);bind('l-cadastre',cadastre);
+bind('l-admin',admin);bind('l-limite',limite);bind('l-reperes',reperes);bind('l-cadastre',cadastre);
 map.on('mousemove',function(e){$('coord').textContent=e.latlng.lat.toFixed(5)+' N, '+e.latlng.lng.toFixed(5)+' E'});
 function z(){$('zoom').textContent='zoom '+map.getZoom().toFixed(1)}
 map.on('zoomend',z);
@@ -1092,7 +1138,7 @@ map.on('zoomend',z);
 var ring=REP.features.filter(function(f){return f.geometry.type==='Polygon'})[0].geometry.coordinates[0];
 var bounds=L.latLngBounds(ring.map(function(c){return [c[1],c[0]]}));
 setBase('ign'); plan.addTo(map); limite.addTo(map); reperes.addTo(map);
-map.fitBounds(bounds.pad(.03)); z(); drawPairs(); buildMarks();
+map.fitBounds(bounds.pad(.03)); z(); drawPairs(); drawSugg(); buildMarks();
 })();
 </script>
 </body>
