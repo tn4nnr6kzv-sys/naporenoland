@@ -771,7 +771,23 @@ details.sec>.inner{display:flex;flex-direction:column;gap:8px;min-width:0}
 .parc-lbl::before{display:none}
 .popbtn{margin-top:8px;font:500 12px var(--body);padding:5px 9px;border:1px solid #bbb;border-radius:5px;background:#fff;color:#222;cursor:pointer}
 .timeline{margin:6px 0 0;padding-left:16px}
+output{white-space:nowrap}
+.shrow .row{align-items:center}
+.shrow .row label{flex:1;line-height:1.3}
+.go{padding:3px 9px;font-size:12px;flex:none}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.chips button{border-radius:999px;padding:5px 12px}
+#ctl{position:absolute;top:12px;left:12px;z-index:650;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 80px)}
+#ctl button,#fade{background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.25);color:var(--ink)}
+#ctl button{padding:7px 11px;font:500 13px var(--body)}
+#fade{display:flex;align-items:center;gap:8px;padding:5px 11px;font-size:12px;color:var(--muted)}
+#fade input{width:110px;margin:0}
+details.sec{border-top:1px solid var(--line);padding-top:12px}
+details.sec>summary{cursor:pointer;padding:2px 0 10px}
+body.nopanel #panel{display:none}
 @media (max-width:760px){
+  #fade input{width:80px}
+  #fade span:last-child{display:none}
   body{flex-direction:column-reverse}
   #panel{width:100%;height:46%;border-right:0;border-top:1px solid var(--line)}
   #mapwrap{height:54%}
@@ -784,6 +800,7 @@ details.sec>.inner{display:flex;flex-direction:column;gap:8px;min-width:0}
   <header>
     <h1>Saint-Léger-en-Yvelines</h1>
     <p class="sub">Cadastre napoléonien : tableau d'assemblage et feuilles de section (cote 78¹), calés sur la carte actuelle.</p>
+    <div class="chips"><button type="button" id="go-village">Le village</button><button type="button" id="go-commune">Commune entière</button></div>
   </header>
 
   <section>
@@ -792,20 +809,18 @@ details.sec>.inner{display:flex;flex-direction:column;gap:8px;min-width:0}
     <label><input id="mult" type="checkbox"> Fondre avec le fond de carte</label>
   </section>
 
-  <section>
-    <h2>Fond de carte</h2>
+  <details class="sec" id="d-base" open><summary>Fond de carte</summary><div class="inner">
     <div id="bases"></div>
     <p id="tilewarn" class="note warn" hidden>Le fond de carte ne se charge pas. Vérifiez votre connexion internet.</p>
-  </section>
+  </div></details>
 
-  <section>
-    <h2>Couches</h2>
+  <details class="sec" id="d-couches" open><summary>Couches</summary><div class="inner">
     <label><input id="l-limite" type="checkbox" checked> Limite communale tracée</label>
     <label><input id="l-reperes" type="checkbox" checked> Sections, bourg et lieux-dits</label>
     <label><input id="l-cadastre" type="checkbox"> Cadastre actuel (IGN)</label>
     <label><input id="l-admin" type="checkbox"> Limites de communes actuelles (IGN)</label>
     <div id="layers"></div>
-  </section>
+  </div></details>
 
   <section id="sec-parc">
     <h2>Parcelles</h2>
@@ -836,15 +851,14 @@ details.sec>.inner{display:flex;flex-direction:column;gap:8px;min-width:0}
     <div id="plist"></div>
   </section>
 
-  <section>
-    <h2>Importer un GeoJSON</h2>
+  <details class="sec" id="d-import"><summary>Importer un GeoJSON</summary><div class="inner">
     <p class="note">Glissez un fichier GeoJSON sur la carte, ou choisissez-le ici. Un fichier de parcelles exporté depuis cette carte est reconnu et fusionné avec vos parcelles.</p>
     <div class="btns">
       <label class="btn" for="file">Ajouter un GeoJSON</label>
       <input id="file" type="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden>
     </div>
     <p id="msg" class="note" role="status"></p>
-  </section>
+  </div></details>
 
   <details class="sec" id="calibd"><summary>Points de calage</summary><div class="inner">
     <div class="row"><label for="sheetsel">Plan à caler</label><select id="sheetsel"></select></div>
@@ -868,6 +882,8 @@ details.sec>.inner{display:flex;flex-direction:column;gap:8px;min-width:0}
 
 <div id="mapwrap">
   <div id="map"></div>
+  <div id="ctl"><button type="button" id="tpanel" aria-label="Afficher ou masquer le panneau">☰ Panneau</button><button type="button" id="locate" aria-label="Me localiser">⌖ Ma position</button>
+    <div id="fade"><span>Plan ancien</span><input id="gm" type="range" min="0" max="100" value="100" aria-label="Transparence des plans anciens"><span>Carte actuelle</span></div></div>
   <div id="drawbar"><span id="drawcount">0 point</span><button id="dfin" type="button" class="primary">Terminer</button><button id="dundo" type="button">Retirer le dernier point</button><button id="dcancel" type="button">Annuler</button></div>
   <div id="drop">Déposez le fichier GeoJSON</div>
   <div id="status"><span id="coord">—</span><span id="zoom"></span></div>
@@ -892,7 +908,9 @@ var IMG={assemblage:'data:image/webp;base64,UklGRmIcBABXRUJQVlA4WAoAAAAQAAAADwoA
 var GEO=JSON.parse(document.getElementById('georef').textContent);
 var REP=JSON.parse(document.getElementById('reperes').textContent);
 var PARC=JSON.parse(document.getElementById('parcelles').textContent);
-var W=0, H=0, blend=false;
+var W=0, H=0, blend=false, GM=1;
+var UI={};try{UI=JSON.parse(localStorage.getItem('stleger-ui-v1')||'{}')||{}}catch(e){}
+function saveUI(){try{localStorage.setItem('stleger-ui-v1',JSON.stringify(UI))}catch(e){}}
 var $=function(id){return document.getElementById(id)};
 var esc=function(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
 
@@ -927,7 +945,7 @@ function setBase(id){
   curBase.layer.addTo(map); curBase.layer.bringToBack();
   document.querySelector('input[name=base][value='+id+']').checked=true;
 }
-$('bases').addEventListener('change',function(e){if(e.target.name==='base')setBase(e.target.value)});
+$('bases').addEventListener('change',function(e){if(e.target.name==='base'){setBase(e.target.value);UI.base=e.target.value;saveUI()}});
 
 /* ---- plan ancien : image posée par une transformation affine (3 points de calage) ---- */
 var P=function(ll){return L.CRS.EPSG3857.project(L.latLng(ll[1],ll[0]))};
@@ -998,12 +1016,12 @@ var Plan=L.Layer.extend({
   onAdd:function(m){
     var img=this._img=L.DomUtil.create('img','plan-img leaflet-zoom-animated');
     img.alt='Plan cadastral napoléonien : '+this.sh.nom; img.width=this.sh.W; img.height=this.sh.H; img.src=this.sh.url;
-    img.style.width=this.sh.W+'px'; img.style.height=this.sh.H+'px'; img.style.opacity=this.options.opacity; img.style.zIndex=this.sh.z; if(blend)img.style.mixBlendMode='multiply';
+    img.style.width=this.sh.W+'px'; img.style.height=this.sh.H+'px'; img.style.opacity=this.options.opacity*GM; img.style.zIndex=this.sh.z; if(blend)img.style.mixBlendMode='multiply';
     m.getPane('overlayPane').appendChild(img); this._reset();
   },
   onRemove:function(){L.DomUtil.remove(this._img)},
   getEvents:function(){var ev={zoom:this._reset,viewreset:this._reset}; if(this._zoomAnimated)ev.zoomanim=this._anim; return ev},
-  setOpacity:function(o){this.options.opacity=o; if(this._img)this._img.style.opacity=o},
+  setOpacity:function(o){this.options.opacity=o; if(this._img)this._img.style.opacity=o*GM},
   _geom:function(){
     var sh=this.sh; return [[0,0],[sh.W,0],[0,sh.H]].map(function(p){return UP(applyT(sh.T,p))});
   },
@@ -1058,6 +1076,7 @@ function drawLayers(){
     d.innerHTML='<label style="flex:1"><input type="checkbox" '+(map.hasLayer(it.layer)?'checked':'')+'><i class="sw" style="background:'+it.color+'"></i><span>'+esc(it.name)+'</span></label><button class="x" type="button" aria-label="Retirer la couche">×</button>';
     d.querySelector('input').onchange=function(e){e.target.checked?it.layer.addTo(map):map.removeLayer(it.layer)};
     d.querySelector('button').onclick=function(){map.removeLayer(it.layer);userLayers.splice(i,1);drawLayers()};
+    d.querySelector('.go').onclick=function(){if(!map.hasLayer(s.layer))showSheet(s);map.fitBounds(sheetBounds(s).pad(.05))};
     box.appendChild(d);
   });
 }
@@ -1225,7 +1244,7 @@ function drawSheets(){
   var box=$('sheets'); box.innerHTML='';
   SHEETS.slice().reverse().forEach(function(s){
     var d=document.createElement('div'); d.className='shrow';
-    d.innerHTML='<div class="row"><label><input type="checkbox" '+(map.hasLayer(s.layer)?'checked':'')+'> '+esc(s.nom)+'</label><output>'+Math.round(s.layer.options.opacity*100)+' %</output></div><input type="range" min="0" max="100" value="'+Math.round(s.layer.options.opacity*100)+'" aria-label="Opacité : '+esc(s.nom)+'">';
+    d.innerHTML='<div class="row"><label><input type="checkbox" '+(map.hasLayer(s.layer)?'checked':'')+'> '+esc(s.nom)+'</label><button type="button" class="go" aria-label="Aller à '+esc(s.nom)+'">Aller</button><output>'+Math.round(s.layer.options.opacity*100)+' %</output></div><input type="range" min="0" max="100" value="'+Math.round(s.layer.options.opacity*100)+'" aria-label="Opacité : '+esc(s.nom)+'">';
     d.querySelector('input[type=checkbox]').onchange=function(e){showSheet(s,e.target.checked)};
     d.querySelector('input[type=range]').oninput=function(e){var v=+e.target.value;s.layer.setOpacity(v/100);d.querySelector('output').textContent=v+' %'};
     box.appendChild(d);
@@ -1424,8 +1443,36 @@ renderParcels(); zlab();
 /* ---- démarrage ---- */
 var ring=REP.features.filter(function(f){return f.geometry.type==='Polygon'})[0].geometry.coordinates[0];
 var bounds=L.latLngBounds(ring.map(function(c){return [c[1],c[0]]}));
-setBase('ign'); SHEETS.forEach(function(s){if(s.visible)s.layer.addTo(map)}); drawSheets(); limite.addTo(map); reperes.addTo(map);
+setBase((UI.base&&BASES.some(function(b){return b.id===UI.base}))?UI.base:'ign'); SHEETS.forEach(function(s){if(s.visible)s.layer.addTo(map)}); drawSheets(); limite.addTo(map); reperes.addTo(map);
 map.fitBounds(bounds.pad(.03)); z(); drawPairs(); drawSugg(); buildMarks();
+function villageBounds(){var b=null;SHEETS.forEach(function(s){if(s.id==='assemblage')return;try{var x=sheetBounds(s);b=b?b.extend(x):x}catch(e){}});return b}
+function goVillage(){var b=villageBounds();if(b&&b.isValid())map.fitBounds(b.pad(.03));else map.fitBounds(bounds.pad(.03))}
+function goCommune(){map.fitBounds(bounds.pad(.03))}
+$('go-village').onclick=goVillage;$('go-commune').onclick=goCommune;
+goVillage();
+/* transparence globale */
+function applyGM(){SHEETS.forEach(function(s){if(s.layer._img)s.layer._img.style.opacity=s.layer.options.opacity*GM})}
+$('gm').oninput=function(e){GM=+e.target.value/100;UI.gm=+e.target.value;saveUI();applyGM()};
+if(typeof UI.gm==='number'){$('gm').value=UI.gm;GM=UI.gm/100;applyGM()}
+/* panneau repliable */
+function setPanel(show){document.body.classList.toggle('nopanel',!show);UI.nopanel=!show;saveUI();setTimeout(function(){map.invalidateSize()},50)}
+$('tpanel').onclick=function(){setPanel(document.body.classList.contains('nopanel'))};
+if(UI.nopanel)setPanel(false);
+/* sections repliables : état mémorisé */
+UI.open=UI.open||{};
+Array.prototype.forEach.call(document.querySelectorAll('details.sec'),function(d){
+  if(d.id in UI.open)d.open=UI.open[d.id];
+  d.addEventListener('toggle',function(){UI.open[d.id]=d.open;saveUI()});
+});
+/* géolocalisation */
+var me=null;
+$('locate').onclick=function(){
+  if(!navigator.geolocation){$('coord').textContent='Géolocalisation indisponible';return}
+  $('coord').textContent='Localisation…';
+  map.locate({setView:true,maxZoom:17});
+};
+map.on('locationfound',function(e){if(me)map.removeLayer(me);me=L.layerGroup([L.circle(e.latlng,{radius:e.accuracy,color:'#2f7f9a',weight:2,fillOpacity:.12}),L.circleMarker(e.latlng,{radius:6,color:'#fff',weight:2,fillColor:'#2f7f9a',fillOpacity:1})]).addTo(map);$('coord').textContent='Position trouvée (±'+Math.round(e.accuracy)+' m)'});
+map.on('locationerror',function(){$('coord').textContent='Position introuvable (autorisation refusée ?)'});
 })();
 </script>
 </body>
