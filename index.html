@@ -785,6 +785,15 @@ output{white-space:nowrap}
 details.sec{border-top:1px solid var(--line);padding-top:12px}
 details.sec>summary{cursor:pointer;padding:2px 0 10px}
 body.nopanel #panel{display:none}
+.yr{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.yr button{padding:5px 10px}
+.yr .play{min-width:38px}
+#pfilter{width:100%;font:13px var(--body);color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:7px 9px}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:12px;font-size:13px;color:var(--muted)}
+#help{position:absolute;left:12px;bottom:40px;z-index:640;max-width:min(330px,calc(100% - 24px));background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.3);padding:14px 16px;font-size:13px}
+#help h3{margin:0 0 6px;font:600 16px var(--display)}
+#help ol{margin:0 0 10px;padding-left:18px}
+#help[hidden]{display:none}
 @media (max-width:760px){
   #fade input{width:80px}
   #fade span:last-child{display:none}
@@ -826,7 +835,8 @@ body.nopanel #panel{display:none}
     <h2>Parcelles</h2>
     <p class="note">Tracez chaque parcelle sur le plan, puis renseignez sa fiche et ses mutations. La couleur suit le propriétaire à l'année choisie.</p>
     <div class="row"><label for="year">Année</label><output id="yearv">1835</output></div>
-    <input id="year" type="range" min="1820" max="2026" value="1835">
+    <input id="year" type="range" min="1820" max="2026" value="1835" aria-label="Année">
+    <div class="yr"><button type="button" id="yprev" aria-label="Année précédente">◀</button><button type="button" id="yplay" class="play" aria-label="Lecture de la chronologie">▶</button><button type="button" id="ynext" aria-label="Année suivante">▶|</button><button type="button" id="y1835">1835</button><button type="button" id="y2026">Aujourd'hui</button></div>
     <div class="legend"><span><i style="background:#2d6a4d"></i>Germond</span><span><i style="background:#c0791f"></i>Milbeau</span><span><i style="background:#2f7f9a"></i>Les deux</span><span><i style="background:#7a7f86"></i>Autre</span></div>
     <div class="btns"><button id="newp" type="button" class="primary">Nouvelle parcelle</button><button id="expp" type="button">Exporter</button></div>
     <p id="pmsg" class="note" role="status"></p>
@@ -848,6 +858,8 @@ body.nopanel #panel{display:none}
       <div class="btns"><button id="addmut" type="button">Ajouter une mutation</button></div>
       <div class="btns"><button id="savep" type="button" class="primary">Enregistrer</button><button id="redraw" type="button">Redessiner</button><button id="delp" type="button">Supprimer</button><button id="cancelp" type="button">Fermer</button></div>
     </div>
+    <input id="pfilter" type="search" placeholder="Rechercher (numéro, lieu-dit, propriétaire)" aria-label="Rechercher une parcelle" hidden>
+    <p id="pcount" class="note" hidden></p>
     <div id="plist"></div>
   </section>
 
@@ -858,6 +870,12 @@ body.nopanel #panel{display:none}
       <input id="file" type="file" accept=".geojson,.json,application/geo+json,application/json" multiple hidden>
     </div>
     <p id="msg" class="note" role="status"></p>
+  </div></details>
+
+  <details class="sec" id="d-save"><summary>Sauvegarde de mes données</summary><div class="inner">
+    <p class="note">Vos parcelles et vos calages sont enregistrés dans ce navigateur. Un seul fichier de sauvegarde permet de les retrouver ailleurs (autre appareil, autre navigateur) ou après un nettoyage du navigateur.</p>
+    <div class="btns"><button id="bk" type="button" class="primary">Sauvegarder</button><label class="btn" for="rs">Restaurer</label><input id="rs" type="file" accept=".json,application/json" hidden></div>
+    <p id="bkmsg" class="note" role="status"></p>
   </div></details>
 
   <details class="sec" id="calibd"><summary>Points de calage</summary><div class="inner">
@@ -885,6 +903,7 @@ body.nopanel #panel{display:none}
   <div id="ctl"><button type="button" id="tpanel" aria-label="Afficher ou masquer le panneau">☰ Panneau</button><button type="button" id="locate" aria-label="Me localiser">⌖ Ma position</button>
     <div id="fade"><span>Plan ancien</span><input id="gm" type="range" min="0" max="100" value="100" aria-label="Transparence des plans anciens"><span>Carte actuelle</span></div></div>
   <div id="drawbar"><span id="drawcount">0 point</span><button id="dfin" type="button" class="primary">Terminer</button><button id="dundo" type="button">Retirer le dernier point</button><button id="dcancel" type="button">Annuler</button></div>
+  <div id="help" hidden><h3>Bienvenue</h3><ol><li>Réglez la transparence avec le curseur en haut pour comparer plan ancien et carte actuelle.</li><li>« Nouvelle parcelle » : tracez le contour sur le plan, puis remplissez la fiche et ses mutations.</li><li>Pensez à « Sauvegarder » (panneau) après vos modifications.</li></ol><button type="button" class="primary" id="helpok">Compris</button></div>
   <div id="drop">Déposez le fichier GeoJSON</div>
   <div id="status"><span id="coord">—</span><span id="zoom"></span></div>
 </div>
@@ -1303,7 +1322,12 @@ function renderParcels(){
 }
 function drawList(){
   var box=$('plist'); box.innerHTML='';
-  parcels.slice().sort(function(a,b){return pid(a)<pid(b)?-1:1}).forEach(function(p){
+  var q=($('pfilter').value||'').trim().toLowerCase();
+  $('pfilter').hidden=!parcels.length; $('pcount').hidden=!parcels.length;
+  if(!parcels.length){var em=document.createElement('div');em.className='empty';em.textContent='Aucune parcelle pour le moment. Cliquez sur « Nouvelle parcelle », puis tracez son contour sur le plan.';box.appendChild(em)}
+  var shown=parcels.filter(function(p){if(!q)return true;return (pid(p)+' '+(p.lieu||'')+' '+(ownerAt(p,year)||'')).toLowerCase().indexOf(q)>=0});
+  $('pcount').textContent=shown.length+' parcelle'+(shown.length>1?'s':'')+(q?' sur '+parcels.length:'')+' · à l\'année '+year;
+  shown.sort(function(a,b){return pid(a)<pid(b)?-1:1}).forEach(function(p){
     var o=ownerAt(p,year), d=document.createElement('div'); d.className='pitem';
     d.innerHTML='<i class="sw" style="background:'+FCOL[famOf(o)]+'"></i><span><b>'+esc(pid(p))+'</b>'+(p.lieu?' · '+esc(p.lieu):'')+'<small>'+esc(o||'propriétaire inconnu')+'</small></span><button class="x" type="button" aria-label="Modifier la parcelle '+esc(pid(p))+'">Modifier</button>';
     d.onclick=function(e){if(e.target.tagName==='BUTTON'){openForm(p,false);return} if(p._layer){map.fitBounds(p._layer.getBounds().pad(1.2));p._layer.openPopup()}};
@@ -1311,6 +1335,7 @@ function drawList(){
   });
 }
 $('year').oninput=function(e){year=+e.target.value;$('yearv').textContent=year;renderParcels()};
+$('pfilter').oninput=function(){drawList()};
 function zlab(){map.getContainer().classList.toggle('lowz',map.getZoom()<14.5)}
 map.on('zoomend',zlab);
 
@@ -1449,7 +1474,38 @@ function villageBounds(){var b=null;SHEETS.forEach(function(s){if(s.id==='assemb
 function goVillage(){var b=villageBounds();if(b&&b.isValid())map.fitBounds(b.pad(.03));else map.fitBounds(bounds.pad(.03))}
 function goCommune(){map.fitBounds(bounds.pad(.03))}
 $('go-village').onclick=goVillage;$('go-commune').onclick=goCommune;
-goVillage();
+var h=(location.hash||'').match(/^#(\d+(?:\.\d+)?)\/(-?\d+\.\d+)\/(-?\d+\.\d+)$/);
+if(h)map.setView([+h[2],+h[3]],+h[1]);else goVillage();
+map.on('moveend',function(){try{history.replaceState(null,'','#'+map.getZoom()+'/'+map.getCenter().lat.toFixed(5)+'/'+map.getCenter().lng.toFixed(5))}catch(e){}});
+/* chronologie */
+function setYear(v){v=Math.max(1820,Math.min(2026,v));year=v;$('year').value=v;$('yearv').textContent=v;renderParcels()}
+var timer=null;
+function stopPlay(){if(timer){clearInterval(timer);timer=null}$('yplay').textContent='▶'}
+$('yprev').onclick=function(){stopPlay();setYear(year-1)};$('ynext').onclick=function(){stopPlay();setYear(year+1)};
+$('y1835').onclick=function(){stopPlay();setYear(1835)};$('y2026').onclick=function(){stopPlay();setYear(2026)};
+$('yplay').onclick=function(){if(timer){stopPlay();return}if(year>=2026)setYear(1820);$('yplay').textContent='❚❚';timer=setInterval(function(){if(year>=2026){stopPlay();return}setYear(year+1)},110)};
+$('year').addEventListener('pointerdown',stopPlay);
+/* sauvegarde / restauration */
+var BKEYS=SHEETS.map(function(s){return s.key}).concat([PKEY]);
+$('bk').onclick=function(){
+  var o={app:'les-aieuls-saint-leger',version:1,date:new Date().toISOString(),data:{}};
+  BKEYS.forEach(function(k){try{var v=localStorage.getItem(k);if(v!==null)o.data[k]=JSON.parse(v)}catch(e){}});
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(o)],{type:'application/json'}));
+  a.download='aieuls_sauvegarde_'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();
+  $('bkmsg').textContent='Sauvegarde téléchargée ('+parcels.length+' parcelle(s), '+Object.keys(o.data).length+' jeu(x) de données).';
+};
+$('rs').onchange=function(e){
+  var f=e.target.files[0];if(!f)return;var r=new FileReader();
+  r.onload=function(){try{var o=JSON.parse(r.result);if(o.app!=='les-aieuls-saint-leger'||!o.data)throw 0;
+    if(!confirm('Remplacer les données de ce navigateur par cette sauvegarde ?'))return;
+    Object.keys(o.data).forEach(function(k){if(BKEYS.indexOf(k)>=0)localStorage.setItem(k,JSON.stringify(o.data[k]))});
+    $('bkmsg').textContent='Sauvegarde restaurée, rechargement…';setTimeout(function(){location.reload()},500)}
+    catch(x){$('bkmsg').className='note warn';$('bkmsg').textContent='Ce fichier n\'est pas une sauvegarde valide.'}};
+  r.readAsText(f);e.target.value='';
+};
+/* aide à la première visite */
+if(!UI.seen){$('help').hidden=false}
+$('helpok').onclick=function(){$('help').hidden=true;UI.seen=1;saveUI()};
 /* transparence globale */
 function applyGM(){SHEETS.forEach(function(s){if(s.layer._img)s.layer._img.style.opacity=s.layer.options.opacity*GM})}
 $('gm').oninput=function(e){GM=+e.target.value/100;UI.gm=+e.target.value;saveUI();applyGM()};
